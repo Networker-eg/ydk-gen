@@ -120,6 +120,14 @@ class ClassInitsPrinter(object):
         for prop in leafs:
             leaf_name = prop.name
             ytype = self._get_type_name(prop.property_type)
+            valid_types = None
+            if ytype == 'enumeration':
+                pass
+            elif ytype == 'younion':
+                valid_types = _get_union_types(prop)
+            if valid_types is not None and len(valid_types) == 1:
+                ytype = valid_types[0]
+                valid_types = None
 
             leaf_type = 'YLeaf'
             declaration_stmt =      'self.%s = None' % leaf_name
@@ -135,7 +143,10 @@ class ClassInitsPrinter(object):
                     clazz.stmt.top in prop.stmt.top.i_aug_targets)):
                 yname = ':'.join([prop.stmt.top.arg, prop.stmt.arg])
 
-            self.ctx.writeln("('%s', %s(YType.%s, '%s'))," % (leaf_name, leaf_type, ytype, yname))
+            if valid_types is None:
+                self.ctx.writeln("('%s', %s(YType.%s, '%s'))," % (leaf_name, leaf_type, ytype, yname, ))
+            else:
+                self.ctx.writeln("('%s', %s(YType.%s, '%s', [%s]))," % (leaf_name, leaf_type, ytype, yname, ', '.join(valid_types)))
             declarations.append(declaration_stmt)
 
         self.ctx.lvl_dec()
@@ -195,9 +206,9 @@ class ClassInitsPrinter(object):
         elif prop_type.name == 'leafref':
             return 'str'
         elif prop_type.name == 'decimal64':
-            return 'str'
+            return 'decimal64'
         elif prop_type.name == 'union':
-            return 'str'
+            return 'younion'
         elif prop_type.name == 'binary':
             return 'str'
         elif prop_type.name == 'instance-identifier':
@@ -211,6 +222,25 @@ class ClassInitsPrinter(object):
         elif isinstance(prop_type, DataType):
             return 'str'
         return prop_type.name
+
+def _get_union_types(prop):
+    restrictions = prop.property_type.types
+    i = 0
+    valid_types = {}
+    while i < len(restrictions):
+        restriction = restrictions[i]
+        typ = restriction.i_type_spec.name
+        if typ == 'union':
+            restrictions.extend(restriction.i_type_spec.types)
+        else:
+            if typ == 'string':
+                typ = 'str'
+            typ = 'YType.%s' % typ
+
+            if not valid_types.has_key(typ):
+                valid_types[typ] = True
+        i += 1
+    return sorted(valid_types.keys())
 
 
 class ClassSetAttrPrinter(object):

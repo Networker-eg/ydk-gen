@@ -378,6 +378,44 @@ def is_identityref_type_spec(type_spec):
 def is_match_all(pattern):
     return pattern in ('[^\*].*', '\*')
 
+def get_absolute_path_prefix(clazz):
+    parents = []
+    p = clazz
+    while p is not None and not isinstance(p, atypes.Package):
+        if p != clazz:
+            parents.append(p)
+        p = p.owner
+
+    parents.reverse()
+    path = ''
+    for p in parents:
+        if len(path) == 0:
+            path += p.owner.stmt.arg
+            path += ':'
+            path += p.stmt.arg
+        else:
+            path += '/'
+            if p.stmt.i_module.arg != p.owner.stmt.i_module.arg:
+                path += p.stmt.i_module.arg
+                path += ':'
+            path += p.stmt.arg
+    slash = ""
+    if len(path) > 0:
+        slash = "/"
+
+    path = "%s%s" % (path, slash)
+    return path
+
+def get_segment_path_prefix(clazz):
+    prefix = ''
+    if clazz.owner is not None:
+        if isinstance(clazz.owner, atypes.Package):
+            prefix += clazz.owner.stmt.arg + ':'
+        elif clazz.owner.stmt.i_module.arg != clazz.stmt.i_module.arg:
+            prefix += clazz.stmt.i_module.arg + ':'
+    prefix += clazz.stmt.arg
+    return prefix
+
 def get_typedef_stmt(type_stmt):
     while all([hasattr(type_stmt, 'i_typedef') and
                type_stmt.i_typedef is not None]):

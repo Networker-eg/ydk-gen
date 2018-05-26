@@ -236,7 +236,8 @@ enum class YType {
     boolean,
     enumeration,
     bits,
-    decimal64
+    decimal64,
+    younion
 };
 
 class YLeaf
@@ -245,6 +246,7 @@ class YLeaf
     YLeaf(YType type, std::string name);
     ~YLeaf();
 
+    YLeaf(YType type, std::string name, std::vector<YType> younions);
     YLeaf(const YLeaf& val);
     YLeaf(YLeaf&& val);
 
@@ -303,6 +305,7 @@ class YLeaf
     std::string name;
     std::string value;
     YType type;
+    std::vector<YType> younions;
     Bits bits_value;
 };
 
@@ -311,6 +314,7 @@ class YLeafList {
     YLeafList(YType type, const std::string & name);
     virtual ~YLeafList();
 
+    YLeafList(YType type, const std::string & name, std::vector<YType> younions);
     YLeafList(const YLeafList& val);
     YLeafList(YLeafList&& val);
 
@@ -349,6 +353,7 @@ class YLeafList {
     std::vector<YLeaf> values;
     YType type;
     std::string name;
+    std::vector<YType> younions;
 };
 
 class YList

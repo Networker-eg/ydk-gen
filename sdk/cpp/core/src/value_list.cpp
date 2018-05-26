@@ -56,12 +56,18 @@ string to_string(YType t)
         TOSTRING(enumeration);
         TOSTRING(bits);
         TOSTRING(decimal64);
+        TOSTRING(younion);
     }
     return "";
 }
 
 YLeafList::YLeafList(YType type, const std::string & name)
     : yfilter(YFilter::not_set), type(type), name(name)
+{
+}
+
+YLeafList::YLeafList(YType type, const std::string & name, std::vector<YType> younions)
+    : yfilter(YFilter::not_set), type(type), name(name), younions(younions)
 {
 }
 

@@ -19,8 +19,8 @@
 Print capabilities for bundle package.
 """
 from ydkgen.printer.file_printer import FilePrinter
-from ydkgen.api_model import get_property_name
-
+from ydkgen.api_model import Class, Enum, Package, get_property_name
+from ydkgen.common import get_absolute_path_prefix, get_module_name, get_segment_path_prefix
 
 class NamespacePrinter(FilePrinter):
     def __init__(self, ctx, one_class_per_module):
@@ -35,6 +35,8 @@ class NamespacePrinter(FilePrinter):
         self._print_capabilities(packages)
         self._print_entity_lookup(packages)
         self._print_namespace_lookup(packages)
+        self._print_identity_lookup(packages)
+        self._print_enum_lookup(packages)
 
     def _get_imports(self, packages):
         imports = set()
@@ -95,6 +97,65 @@ class NamespacePrinter(FilePrinter):
                 continue
             name = p.stmt.arg
             self.ctx.writeln('"{}": "{}",'.format(name, ns.arg))
+        self.ctx.lvl_dec()
+        self.ctx.writeln('}')
+        self.ctx.bline()
+
+    def _print_identity_lookup(self, packages):
+        packages = sorted(packages, key=lambda p:p.name)
+
+        self.ctx.writeln('IDENTITY_LOOKUP = {')
+        self.ctx.lvl_inc()
+        for package in packages:
+            identities = [idx for idx in package.owned_elements if isinstance(
+                idx, Class) and idx.is_identity()]
+            identities = sorted(identities, key=lambda c: c.name)
+            for identity_clazz in identities:
+                self.ctx.writeln("'%s:%s':('%s', '%s')," % (get_module_name(identity_clazz.stmt), identity_clazz.stmt.arg,
+                                                                 identity_clazz.get_py_mod_name(), identity_clazz.qn()))
+        self.ctx.lvl_dec()
+        self.ctx.writeln('}')
+        self.ctx.bline()
+
+    def _print_enum_lookup(self, packages):
+        packages = sorted(packages, key=lambda p:p.name)
+
+        self.ctx.writeln('ENUM_LOOKUP = {')
+        self.ctx.lvl_inc()
+
+        enum_leafs = []
+        for package in packages:
+            class_index = 0
+            classes = [elem for elem in package.owned_elements if isinstance(elem, Class) and not elem.is_identity()]
+
+            while class_index < len(classes):
+                clazz = classes[class_index]
+                properties = sorted(clazz.properties(), key=lambda p:p.name)
+                for prop in properties:
+                    if isinstance(prop.property_type, Enum):
+                        data = (prop.owner, prop.name, prop.get_py_mod_name(), prop.property_type.name)
+                        enum_leafs.append(data)
+                    elif prop.property_type.name == 'union':
+                        for typ in prop.property_type.types:
+                            if typ.i_type_spec.name == 'enumeration':
+                                if hasattr(typ, 'i_enum'):
+                                    enum = typ.i_enum
+                                else:
+                                    enum = typ.i_typedef.i_enum
+                                data = (prop.owner, prop.name, enum.get_py_mod_name(), enum.name)
+                                enum_leafs.append(data)
+                classes.extend([nested_class for nested_class in clazz.owned_elements if isinstance(nested_class, Class)])
+                class_index += 1
+
+        for clazz, leaf_name, module_name, enum_name in enum_leafs:
+            segpath_prefix = get_segment_path_prefix(clazz)
+            segment_path = '%s/%s' % (segpath_prefix, leaf_name)
+            abspath_prefix = get_absolute_path_prefix(clazz)
+
+            key = '%s%s' % (abspath_prefix, segment_path)
+            value = "('%s', '%s')," % (module_name, enum_name)
+            self.ctx.writeln("'%s':%s" % (key, value))
+
         self.ctx.lvl_dec()
         self.ctx.writeln('}')
         self.ctx.bline()

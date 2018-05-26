@@ -56,6 +56,7 @@ std::string to_str(YType t)
         TOSTRING(enumeration);
         TOSTRING(bits);
         TOSTRING(decimal64);
+        TOSTRING(younion);
     }
     return "";
 #undef TOSTRING
@@ -67,6 +68,16 @@ YLeaf::YLeaf(YType type, std::string name):
         name(name),
         value(""),
         type(type)
+{
+}
+
+YLeaf::YLeaf(YType type, std::string name, std::vector<YType> younions):
+        is_set(false),
+        yfilter(YFilter::not_set),
+        name(name),
+        value(""),
+        type(type),
+        younions(younions)
 {
 }
 

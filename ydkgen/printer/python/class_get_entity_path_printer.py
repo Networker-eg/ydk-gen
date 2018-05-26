@@ -21,7 +21,7 @@ class_path_printer.py
 
 """
 from ydkgen.api_model import Package
-from ydkgen.common import has_list_ancestor, is_top_level_class
+from ydkgen.common import get_absolute_path_prefix, get_segment_path_prefix, has_list_ancestor, is_top_level_class
 
 class GetSegmentPathPrinter(object):
 
@@ -45,45 +45,27 @@ class GetSegmentPathPrinter(object):
         self._print_get_ydk_segment_path_body(clazz)
 
     def _print_get_ydk_segment_path_body(self, clazz):
-        path='"'
-        if clazz.owner is not None:
-            if isinstance(clazz.owner, Package):
-                path+= clazz.owner.stmt.arg + ':'
-            elif clazz.owner.stmt.i_module.arg != clazz.stmt.i_module.arg:
-                path+=clazz.stmt.i_module.arg + ':'
-
-        path+= clazz.stmt.arg
-        path+='"'
         predicates = ''
         insert_token = ' + '
 
         key_props = clazz.get_key_props()
         for key_prop in key_props:
             predicates += insert_token
-            
             predicates += '"['
             if key_prop.stmt.i_module.arg != clazz.stmt.i_module.arg:
                 predicates += key_prop.stmt.i_module.arg
                 predicates += ':'
-            
             predicates += key_prop.stmt.arg + '='
-            
             predicates += "'"
-                
             predicates +='"'
-
             predicates += insert_token
-            
             predicates += ('str(self.%s)') % key_prop.name + insert_token
-
             predicates += '"'
-                
             predicates += "'"
-                
             predicates += ']"'
 
-        path = '%s%s' % (path, predicates)
-
+        path = get_segment_path_prefix(clazz)
+        path = '"%s"%s' % (path, predicates)
 
         self.ctx.writeln("self._segment_path = lambda: %s" % path)
 
@@ -105,36 +87,11 @@ class GetAbsolutePathPrinter(object):
 
     def print_output(self, clazz, leafs):
         """
-
             :param `api_model.Class` clazz The class object.
-
         """
         if not is_top_level_class(clazz) and not has_list_ancestor(clazz):
             self._print_absolute_path_body(clazz, leafs)
 
     def _print_absolute_path_body(self, clazz, leafs):
-        parents = []
-        p = clazz
-        while p is not None and not isinstance(p, Package):
-            if p != clazz:
-                parents.append(p)
-            p = p.owner
-
-        parents.reverse()
-        path = ''
-        for p in parents:
-            if len(path) == 0:
-                path += p.owner.stmt.arg
-                path += ':'
-                path += p.stmt.arg
-            else:
-                path += '/'
-                if p.stmt.i_module.arg != p.owner.stmt.i_module.arg:
-                    path += p.stmt.i_module.arg
-                    path += ':'
-                path += p.stmt.arg
-        slash = ""
-        if len(path) > 0:
-            slash = "/"
-        path = "%s%s" % (path, slash)
+        path = get_absolute_path_prefix(clazz)
         self.ctx.writeln('self._absolute_path = lambda: "%s%%s" %% self._segment_path()' % path)

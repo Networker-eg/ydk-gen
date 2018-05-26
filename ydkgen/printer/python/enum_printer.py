@@ -33,7 +33,7 @@ class EnumPrinter(object):
         assert isinstance(enum_class, Enum)
         self._print_enum_header(enum_class)
         self._print_enum_body(enum_class, no_meta_assign)
-        self._print_enum_trailer(enum_class)
+        self._print_enum_trailer()
 
     def _print_enum_header(self, enum_class):
         self.ctx.writeln('class %s(Enum):' % enum_class.name)
@@ -41,6 +41,7 @@ class EnumPrinter(object):
 
     def _print_enum_body(self, enum_class, no_meta_assign):
         self._print_enum_docstring(enum_class)
+        self._print_leaf_name_lookup_table(enum_class)
         self._print_enum_literals(enum_class)
 
     def _print_enum_docstring(self, enum_class):
@@ -54,6 +55,16 @@ class EnumPrinter(object):
         self.ctx.writeln('"""')
         self.ctx.bline()
 
+    def _print_leaf_name_lookup_table(self, enum_class):
+        line = '_enumerator_name_lookup_table = {'
+        for enum_literal in enum_class.literals:
+            key = enum_literal.stmt.arg
+            value = enum_literal.name
+            line = "%s'%s': '%s', " % (line, key, value)
+        line = '%s}' % line
+        self.ctx.writeln(line)
+        self.ctx.bline()
+
     def _print_enum_literals(self, enum_class):
         for enum_literal in enum_class.literals:
             self._print_enum_literal(enum_literal)
@@ -64,6 +75,6 @@ class EnumPrinter(object):
         self.ctx.writeln('%s = Enum.YLeaf(%s, "%s")' % (name, value, enum_literal.stmt.arg))
         self.ctx.bline()
 
-    def _print_enum_trailer(self, enum_class):
+    def _print_enum_trailer(self):
         self.ctx.lvl_dec()
         self.ctx.bline()

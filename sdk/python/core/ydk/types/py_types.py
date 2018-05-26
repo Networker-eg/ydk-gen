@@ -22,12 +22,14 @@
         - Entity
 """
 from collections import OrderedDict
-import logging
+import logging, importlib
 
 from ydk_ import is_set
 from ydk.ext.types import Bits
 from ydk.ext.types import ChildrenMap
+from ydk.ext.types import Decimal64
 from ydk.ext.types import Enum as _Enum
+from ydk.ext.types import Empty
 from ydk.ext.types import YLeaf as _YLeaf
 from ydk.ext.types import YLeafList as _YLeafList
 from ydk.ext.types import YType
@@ -42,8 +44,11 @@ class YLeafList(_YLeafList):
     """ Wrapper class for YLeafList, add __repr__ and get list slice
     functionalities.
     """
-    def __init__(self, ytype, leaf_name):
-        super(YLeafList, self).__init__(ytype, leaf_name)
+    def __init__(self, ytype, leaf_name, younions=None):
+        if younions is None:
+            super(YLeafList, self).__init__(ytype, leaf_name)
+        else:
+            super(YLeafList, self).__init__(ytype, leaf_name, younions)
         self.ytype = ytype
         self.leaf_name = leaf_name
 
@@ -225,13 +230,71 @@ class Entity(_Entity):
     def set_value(self, path, value, name_space='', name_space_prefix=''):
         for name, leaf in self._leafs.items():
             if leaf.name == path:
+                native_value = self._get_native_type(leaf, name, value,)
                 if isinstance(leaf, _YLeaf):
                     if isinstance(self.__dict__[name], Bits):
                         self.__dict__[name][value] = True
                     else:
-                        self.__dict__[name] = value
+                        self.__dict__[name] = native_value
                 elif isinstance(leaf, _YLeafList):
-                    self.__dict__[name].append(value)
+                    self.__dict__[name].append(native_value)
+
+    def _get_native_type(self, leaf, leaf_name, value):
+        result = None
+        if leaf.type != YType.younion:
+            result = self._get_native_type_helper(leaf.type, leaf_name, value)
+        else:
+            for valid_type in leaf.younions:
+                try:
+                    result = self._get_native_type_helper(valid_type, leaf_name, value)
+                except:
+                    pass
+
+                if result is not None:
+                    break
+
+        if result is not None:
+            return result
+        else:
+            return value
+
+    def _get_native_type_helper(self, leaf_type, leaf_name, value):
+        if leaf_type in (YType.uint8, YType.uint16, YType.uint32, YType.uint64,
+            YType.int8, YType.int16, YType.int32, YType.int64):
+            return int(value)
+        if leaf_type == YType.str:
+            return str(value)
+        if leaf_type == YType.boolean:
+            return value.lower() == 'true'
+        if leaf_type == YType.identityref:
+            path = self.__module__.split('.')[:-1]
+            path = '.'.join(path)
+            yang_ns = importlib.import_module('{}._yang_ns'.format(path))
+            identityref_lookup = yang_ns.__dict__['IDENTITY_LOOKUP']
+            module_name, class_name = identityref_lookup[value]
+            module = importlib.import_module(module_name)
+            identityref_type = getattr(module, class_name)
+            return identityref_type()
+        if leaf_type == YType.empty:
+            return Empty()
+        if leaf_type == YType.decimal64:
+            return Decimal64(value)
+        if leaf_type == YType.enumeration:
+            path = self.__module__.split('.')[:-1]
+            path = '.'.join(path)
+            yang_ns = importlib.import_module('{}._yang_ns'.format(path))
+            enum_lookup = yang_ns.__dict__['ENUM_LOOKUP']
+
+            absolute_path = self.get_absolute_path()
+            if absolute_path == '':
+                absolute_path = self.get_segment_path()
+            lookup_key = '%s/%s' % (absolute_path, leaf_name)
+            module_name, enum_name = enum_lookup[lookup_key]
+            module = importlib.import_module(module_name)
+            enum_type = _get_enum_type(module, enum_name)
+            enumerator_name = enum_type._enumerator_name_lookup_table[value]
+            return enum_type.__dict__[enumerator_name]
+        return None
 
     def set_filter(self, path, yfilter):
         pass
@@ -317,7 +380,8 @@ class Entity(_Entity):
                                     "Please use list append or extend method."
                                     .format(value))
             if isinstance(value, _Enum.YLeaf):
-                value = value.name
+                leaf = self._leafs[name]
+                leaf.set(value.name)
             if name in leaf_names and name in self.__dict__:
                 # bits ..?
                 prev_value = self.__dict__[name]
@@ -351,10 +415,36 @@ class Entity(_Entity):
     def __str__(self):
         return "{}.{}".format(self.__class__.__module__, self.__class__.__name__)
 
-
 def _name_matches_yang_name(name, yang_name):
     return name == yang_name or yang_name.endswith(':'+name)
 
+def _get_enum_type(module, enum_name):
+    # check if target enum isn't nested
+    if hasattr(module, enum_name):
+        return getattr(module, enum_name)
+
+    # get the top level classes of the module
+    class_instances = []
+    for attribute_name in dir(module):
+        attribute = getattr(module, attribute_name)
+        if isinstance(attribute, type) and attribute.__module__[:10] == 'ydk.models':
+            attribute_obj = attribute()
+            if isinstance(attribute_obj, Entity):
+                class_instances.append(attribute_obj)
+
+    # breadth first search each class for the target enum type
+    i = 0
+    while(i < len(class_instances)):
+        clazz = class_instances[i]
+        if hasattr(clazz, enum_name):
+            return getattr(clazz, enum_name)
+
+        children = clazz.get_children()
+        for child_name in children:
+            child = children[child_name]
+            class_instances.append(child)
+        i += 1
+    return None
 
 class EntityCollection(object):
     """ EntityCollection is a wrapper class around ordered dictionary collection of type OrderedDict.

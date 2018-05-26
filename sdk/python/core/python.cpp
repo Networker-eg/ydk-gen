@@ -573,7 +573,8 @@ PYBIND11_MODULE(ydk_, ydk)
         .value("boolean", ydk::YType::boolean)
         .value("enumeration", ydk::YType::enumeration)
         .value("bits", ydk::YType::bits)
-        .value("decimal64", ydk::YType::decimal64);
+        .value("decimal64", ydk::YType::decimal64)
+        .value("younion", ydk::YType::younion);
 
     enum_<ydk::path::ModelCachingOption>(types, "ModelCachingOption")
         .value("common", ydk::path::ModelCachingOption::COMMON)
@@ -665,6 +666,7 @@ PYBIND11_MODULE(ydk_, ydk)
 
     class_<ydk::YLeaf>(types, "YLeaf")
         .def(init<ydk::YType, string>(), arg("leaf_type"), arg("name"))
+        .def(init<ydk::YType, string, vector<ydk::YType>>(), arg("leaf_type"), arg("name"), arg("younions"))
         .def("get", &ydk::YLeaf::get, return_value_policy::reference)
         .def("get_name_leafdata", &ydk::YLeaf::get_name_leafdata, return_value_policy::reference)
         .def(self == self, return_value_policy::reference)
@@ -694,12 +696,14 @@ PYBIND11_MODULE(ydk_, ydk)
         .def_readonly("is_set", &ydk::YLeaf::is_set, return_value_policy::reference)
         .def_readonly("name", &ydk::YLeaf::name, return_value_policy::reference)
         .def_readonly("type", &ydk::YLeaf::type, return_value_policy::reference)
+        .def_readonly("younions", &ydk::YLeaf::younions, return_value_policy::reference)
         .def_readwrite("yfilter", &ydk::YLeaf::yfilter)
         .def_readwrite("value_namespace", &ydk::YLeaf::value_namespace)
         .def_readwrite("value_namespace_prefix", &ydk::YLeaf::value_namespace_prefix);
 
     class_<ydk::YLeafList, PyYLeafList>(types, "YLeafList")
         .def(init<ydk::YType, string>(), arg("leaflist_type"), arg("name"))
+        .def(init<ydk::YType, string, vector<ydk::YType>>(), arg("leaflist_type"), arg("name"), arg("younions"))
         .def("getYLeafs", &ydk::YLeafList::getYLeafs)
         .def("get_name_leafdata", &ydk::YLeafList::get_name_leafdata)
         .def(self == self)
@@ -728,6 +732,7 @@ PYBIND11_MODULE(ydk_, ydk)
                         })
         .def_readonly("name", &ydk::YLeafList::name, return_value_policy::reference)
         .def_readonly("type", &ydk::YLeafList::type, return_value_policy::reference)
+        .def_readonly("younions", &ydk::YLeafList::younions, return_value_policy::reference)
         .def_readwrite("yfilter", &ydk::YLeafList::yfilter);
 
     class_<ydk::NetconfServiceProvider, ydk::ServiceProvider>(providers, "NetconfServiceProvider")
