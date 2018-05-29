@@ -126,7 +126,7 @@ class ClassInitsPrinter(object):
             elif ytype == 'younion':
                 valid_types = _get_union_types(prop)
             if valid_types is not None and len(valid_types) == 1:
-                ytype = valid_types[0]
+                ytype = valid_types[0][6:]
                 valid_types = None
 
             leaf_type = 'YLeaf'
