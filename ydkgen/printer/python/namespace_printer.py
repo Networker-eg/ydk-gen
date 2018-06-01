@@ -133,7 +133,7 @@ class NamespacePrinter(FilePrinter):
                 properties = sorted(clazz.properties(), key=lambda p:p.name)
                 for prop in properties:
                     if isinstance(prop.property_type, Enum):
-                        data = (prop.owner, prop.name, prop.get_py_mod_name(), prop.property_type.name)
+                        data = (prop.owner, prop.name, prop.property_type.get_py_mod_name(), prop.property_type.name)
                         enum_leafs.append(data)
                     elif prop.property_type.name == 'union':
                         for typ in prop.property_type.types:
@@ -148,11 +148,12 @@ class NamespacePrinter(FilePrinter):
                 class_index += 1
 
         for clazz, leaf_name, module_name, enum_name in enum_leafs:
-            segpath_prefix = get_segment_path_prefix(clazz)
-            segment_path = '%s/%s' % (segpath_prefix, leaf_name)
-            abspath_prefix = get_absolute_path_prefix(clazz)
+            # segpath_prefix = get_segment_path_prefix(clazz)
+            # segment_path = '%s/%s' % (segpath_prefix, leaf_name)
+            # abspath_prefix = get_absolute_path_prefix(clazz)
 
-            key = '%s%s' % (abspath_prefix, segment_path)
+            # key = '%s%s' % (abspath_prefix, segment_path)
+            key = '%s.%s' % (clazz.fqn(), leaf_name)
             value = "('%s', '%s')," % (module_name, enum_name)
             self.ctx.writeln("'%s':%s" % (key, value))
 

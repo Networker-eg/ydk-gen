@@ -285,10 +285,12 @@ class Entity(_Entity):
             yang_ns = importlib.import_module('{}._yang_ns'.format(path))
             enum_lookup = yang_ns.__dict__['ENUM_LOOKUP']
 
-            absolute_path = self.get_absolute_path()
-            if absolute_path == '':
-                absolute_path = self.get_segment_path()
-            lookup_key = '%s/%s' % (absolute_path, leaf_name)
+            # absolute_path = self.get_absolute_path()
+            # if absolute_path == '':
+            #     absolute_path = self.get_segment_path()
+            # lookup_key = '%s/%s' % (absolute_path, leaf_name)
+
+            lookup_key = '%s.%s' % (self._lookup_key, leaf_name)
             module_name, enum_name = enum_lookup[lookup_key]
             module = importlib.import_module(module_name)
             enum_type = _get_enum_type(module, enum_name)
@@ -380,8 +382,11 @@ class Entity(_Entity):
                                     "Please use list append or extend method."
                                     .format(value))
             if isinstance(value, _Enum.YLeaf):
-                leaf = self._leafs[name]
-                leaf.set(value.name)
+                if name in self._leafs:
+                    leaf = self._leafs[name]
+                    leaf.set(value.name)
+                else:
+                    raise _YModelError("Invalid value '%s' in '%s'" % (value.name, clazz().__str__()))
             if name in leaf_names and name in self.__dict__:
                 # bits ..?
                 prev_value = self.__dict__[name]
@@ -439,12 +444,19 @@ def _get_enum_type(module, enum_name):
         if hasattr(clazz, enum_name):
             return getattr(clazz, enum_name)
 
-        children = clazz.get_children()
+        children = clazz._child_classes
         for child_name in children:
-            child = children[child_name]
-            class_instances.append(child)
+            child = children[child_name][1]
+            class_instances.append(child())
+
+        # if clazz.__str__() == 'ydk.models.ietf.ietf_netconf_monitoring.Schemas':
+        #     from pdb import set_trace; set_trace()
+        # children = clazz.get_children()
+        # for child_name in children:
+        #     child = children[child_name]
+        #     class_instances.append(child)
         i += 1
-    return None
+    raise YModelError('Could not locate %s within %s' % (enum_name, module.__name__))
 
 class EntityCollection(object):
     """ EntityCollection is a wrapper class around ordered dictionary collection of type OrderedDict.

@@ -107,6 +107,7 @@ class ClassInitsPrinter(object):
             self._print_init_lists(clazz)
             self._print_class_segment_path(clazz)
             self._print_class_absolute_path(clazz, leafs)
+            self.ctx.writeln('self._lookup_key = "%s"' % clazz.fqn())
 
     def _print_init_leafs_and_leaflists(self, clazz, leafs):
         if len(leafs) == 0:

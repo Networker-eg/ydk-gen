@@ -205,12 +205,12 @@ class SanityNetconf(ParametrizedTestCase):
         config = self.netconf_service.get_config(self.ncc, Datastore.candidate, get_filter)
         self.assertEqual(edit_filter, config)
 
-#         codec_service = CodecService()
-#         codec_provider = CodecServiceProvider()
-#         codec_provider.encoding = EncodingFormat.XML
-#         for entity in config:
-#             xml_encode = codec_service.encode(codec_provider, entity)
-#             print(xml_encode)
+         # codec_service = CodecService()
+         # codec_provider = CodecServiceProvider()
+         # codec_provider.encoding = EncodingFormat.XML
+         # for entity in config:
+         #     xml_encode = codec_service.encode(codec_provider, entity)
+         #     print(xml_encode)
 
         op = self.netconf_service.discard_changes(self.ncc)
 
