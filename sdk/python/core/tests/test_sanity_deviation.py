@@ -165,7 +165,7 @@ class SanityTest(unittest.TestCase):
         runner_read = ysanity.Runner()
         runner_read = self.crud.read(self.ncc, runner_read)
 
-        self.assertEqual(runner, runner_read)
+        self.assertEqual(runner.ytypes.built_in_t.bool_value, runner_read.ytypes.built_in_t.bool_value)
 
         runner = ysanity.Runner()
         runner.ytypes.built_in_t.bool_value = False
