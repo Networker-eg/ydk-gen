@@ -238,7 +238,7 @@ def _get_union_types(prop):
                 typ = 'str'
             typ = 'YType.%s' % typ
 
-            if not valid_types.has_key(typ):
+            if not typ in valid_types:
                 valid_types[typ] = True
         i += 1
     return sorted(valid_types.keys())
